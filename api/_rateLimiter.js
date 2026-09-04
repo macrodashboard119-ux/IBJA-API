@@ -23,7 +23,13 @@ const utilityLimiter = new RateLimiterMemory({
 });
 
 // --- Middleware Function ---
-const rateLimiterMiddleware = (limiter) => async (req, res, next) => {
+// (limiter) => (handler) => (req, res) 형태로 3단 커링.
+// history.js/chart.js가 applyRateLimit(limiter)(handler)로 호출하기 때문에,
+// 이 구조여야 실제 (req, res)가 handler 자리가 아니라 진짜 req/res로 전달됨.
+// 예전 버전은 (limiter) => (req, res, next)였는데, applyRateLimit(limiter)(handler)로
+// 호출하면 handler 자체가 req 자리에 즉시 바인딩되어버려서, module.exports가
+// 함수가 아니라 이미 실행된(그리고 실패한) Promise가 되어버리는 버그가 있었음.
+const rateLimiterMiddleware = (limiter) => (handler) => async (req, res) => {
   // Get the IP address - Vercel uses 'x-forwarded-for'
   const headers = req.headers || {};
   const forwarded = headers["x-forwarded-for"];
@@ -51,7 +57,7 @@ const rateLimiterMiddleware = (limiter) => async (req, res, next) => {
     res.setHeader("X-RateLimit-Reset", resetTime);
 
     // Proceed to the actual API logic
-    next();
+    return handler(req, res);
   } catch (rejRes) {
     // Rate limit exceeded
     const retryAfter = Math.ceil(rejRes.msBeforeNext / 1000); // Seconds to wait
