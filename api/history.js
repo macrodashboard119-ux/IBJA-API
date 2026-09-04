@@ -14,7 +14,7 @@ const handleHistoryRequest = async (req, res) => {
 
       rows.each((_, row) => {
         const cells = $(row).find('td');
-        if (cells.length === 7) {
+        if (cells.length >= 7) {
           // Add basic validation for rates
           const gold_999 = $(cells[1]).text().trim();
           const silver_999 = $(cells[6]).text().trim();
